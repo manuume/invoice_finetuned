@@ -11,7 +11,7 @@ This project implements an end-to-end pipeline that transforms unstructured rece
 - **Fine-tuned Qwen2.5-VL model** achieving state-of-the-art performance on receipt extraction tasks
 - **Reduced inference latency by 60%** using vLLM optimization techniques
 - **Processed 10,000+ receipts** with consistent accuracy across diverse formats
-- **Built RESTful API** handling 100+ concurrent requests with sub-second response times
+- **Built RESTful API** handling concurrent requests with sub-second response time.
 
 ## 🛠️ Technical Stack
 
