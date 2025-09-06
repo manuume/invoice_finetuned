@@ -180,10 +180,6 @@ Content-Type: multipart/form-data
 - [x] MongoDB integration
 - [x] Web interface
 - [ ] Multi-receipt batch processing
-- [ ] Cloud deployment (AWS/GCP)
-- [ ] Mobile SDK
-- [ ] Real-time streaming API
-- [ ] Advanced analytics dashboard
 
 ## 🤝 Contributing
 
