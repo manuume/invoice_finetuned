@@ -1,0 +1,22 @@
+# Ignore model and training output folders
+donut_finetuned_receipts_final_v2/
+final_donut_receipt_model/
+wandb/
+
+# Ignore environment and cache files
+__pycache__/
+.lightning_studio/
+.idea/
+.vscode/
+.cursor-server/
+.vscode-server/
+.windsurf-server/
+.triton/
+.netrc
+
+# Ignore generated data
+test_images/
+inference/
+
+# Secret files
+*.env
