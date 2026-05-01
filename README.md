@@ -1,286 +1,295 @@
-# Financial OCR — Receipt Extraction with Qwen2.5-VL-7B
+# Financial OCR
 
-Production-grade MLOps pipeline for structured receipt field extraction.  
-Fine-tunes Qwen2.5-VL-7B with LoRA on CORD v2, serves via FastAPI + vLLM,  
-with automated evaluation on every push to `main`.
+End-to-end receipt understanding system built around Qwen2.5-VL-7B for structured field extraction from retail receipt images. The project covers dataset preparation, LoRA fine-tuning, async API serving, database-backed job tracking, evaluation reporting, and GPU inference benchmarking in a single workflow.
 
----
+It is designed as a practical multimodal ML engineering project: train a vision-language model on receipt data, expose it through an application-facing API, and measure both extraction quality and serving performance with reproducible artifacts.
 
-## Architecture
+## Project Overview
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Lightning AI Studio                                     │
-│                                                          │
-│  Upload → FastAPI → BackgroundTask → Qwen2.5-VL-7B      │
-│                         │               (vLLM / HF)     │
-│                         ▼                               │
-│                     SQLite / Postgres                    │
-│                         │                               │
-│                  Eval Pipeline ──► MLflow ──► Report     │
-└─────────────────────────────────────────────────────────┘
-         │
-         ▼
-   Docker container
-   (API + MLflow UI)
-```
-
-| Layer | Technology |
-|-------|-----------|
-| Model | Qwen2.5-VL-7B-Instruct + LoRA (peft) |
-| Fine-tuning | HuggingFace Trainer + bf16 + gradient accumulation |
-| Serving (GPU) | vLLM — OpenAI-compatible API |
-| Serving (CPU) | HuggingFace transformers + 4-bit quantisation |
-| API | FastAPI + BackgroundTasks (async) |
-| Database | SQLite (dev) → PostgreSQL (prod) via SQLAlchemy async |
-| Experiment tracking | MLflow |
-| Augmentation | Albumentations |
-| Evaluation | jiwer (CER/WER) + scikit-learn (F1) |
-| CI/CD | GitHub Actions — lint, test, eval gate on every PR |
-| Containerisation | Docker + docker-compose |
-| Compute | Lightning AI Studio (CPU dev ↔ GPU training) |
-
----
-
-## Dataset
-
-**CORD v2** — Consolidated Receipt Dataset  
-800 Korean retail receipts with hierarchical JSON annotations.
-
-| Split | Samples | After augmentation |
-|-------|---------|--------------------|
-| Train | 800 | ~2,500 |
-| Validation | 100 | 100 (no augmentation) |
-| Test | 100 | 100 (no augmentation) |
-
-Target fields extracted:
+Financial OCR extracts structured JSON from receipt images, including:
 
 ```json
 {
-  "store_name": "GS25 Gangnam",
-  "total_price": "15000",
-  "tax_price": "1500",
+  "store_name": "CGV CINEMAS",
+  "total_price": "60,000",
+  "tax_price": "5,455",
   "items": [
-    {"name": "Americano", "price": "3000"}
+    {
+      "name": "-TICKET CP",
+      "price": "60.000"
+    }
   ]
 }
 ```
 
----
+The system uses Qwen2.5-VL-7B-Instruct as the base vision-language model and adapts it for receipt extraction with LoRA fine-tuning. Inference is exposed through a FastAPI service that accepts uploaded receipt images, queues processing asynchronously, stores job state in a database, and returns structured results through polling endpoints.
 
-## Quick Start
+## Why This Project Matters
 
-### 1. Clone & install (Lightning AI CPU studio)
+- Demonstrates end-to-end multimodal ML engineering, not just model training.
+- Combines fine-tuning, inference serving, API design, persistence, and evaluation in one system.
+- Focuses on business-relevant structured extraction instead of generic OCR text dumping.
+- Includes real evaluation artifacts and measured GPU latency results from the implemented pipeline.
 
-```bash
-git clone https://github.com/your-username/financial-ocr
-cd financial-ocr
-pip install -r requirements.txt
-cp .env.example .env
+## System Architecture
+
+```text
+Receipt Image
+    |
+    v
+FastAPI Upload Endpoint
+    |
+    v
+Background Task Processor
+    |
+    v
+Qwen2.5-VL-7B + LoRA Adapter
+    |
+    +--> Structured JSON Result
+    |
+    +--> SQLite / PostgreSQL Job + Result Storage
+
+Evaluation Pipeline
+    |
+    +--> CER / WER / Field Accuracy / Field F1
+    +--> Markdown report
+    +--> Prediction artifacts
+    +--> MLflow logs
 ```
 
-### 2. Download & preprocess data
+## Core Components
 
-```bash
-bash scripts/download_data.sh
-python scripts/preprocess_data.py
-```
+| Area | Stack |
+|------|-------|
+| Base model | Qwen/Qwen2.5-VL-7B-Instruct |
+| Adaptation | LoRA with `peft` |
+| Training | Hugging Face `Trainer` |
+| Serving | FastAPI, async background processing |
+| GPU inference | `transformers` backend and vLLM-compatible path |
+| Persistence | SQLAlchemy async, SQLite for local development |
+| Tracking | MLflow |
+| Evaluation | CER, WER, field accuracy, field F1, latency percentiles |
+| Data pipeline | preprocessing and augmentation scripts for CORD v2 |
 
-### 3. Run tests locally
+## Results
 
-```bash
-pytest tests/ -v
-```
+The repository already includes generated evaluation artifacts in `reports/`, and those results are used directly here.
 
-### 4. Start the API (CPU dev mode)
+### Evaluation Metrics
 
-```bash
-# Uses Qwen2.5-VL-3B + 4-bit quant on CPU
-MODEL_BACKEND=transformers uvicorn src.api.main:app --reload --port 8000
-```
+From `reports/eval_test.md`:
 
-Open **http://localhost:8000/docs** for the interactive Swagger UI.
+| Metric | Value |
+|--------|-------|
+| Character Error Rate (CER) | `0.1628` |
+| Word Error Rate (WER) | `0.3135` |
+| Field-level Accuracy | `0.8551` |
+| Field F1 Score | `0.9219` |
+| Field Precision | `1.0000` |
+| Field Recall | `0.8551` |
+| Latency p50 | `1702.0 ms` |
+| Latency p95 | `4969.0 ms` |
+| Latency p99 | `6573.2 ms` |
 
----
+### GPU Inference Benchmarks
 
-## Fine-Tuning (Lightning AI GPU Studio)
+Measured end-to-end API and serving behavior from the current implementation:
 
-```bash
-# Switch to GPU in Lightning AI
-# lightning studio modify financial-ocr --gpu l4
+- FastAPI GPU inference examples completed in about `1485.3 ms`, `2142.6 ms`, and `1802.6 ms` model inference time.
+- vLLM concurrent serving on 3 images achieved:
+  - batch wall clock: `1570.2 ms`
+  - average request time: `1259.1 ms`
+  - min request time: `902.3 ms`
+  - max request time: `1557.6 ms`
+  - throughput: `1.91 images/second`
 
-python src/model/train.py --config configs/lora_config.yaml
-```
+### Included Evaluation Artifacts
 
-Training runs ~2–3 hours on an L4 GPU (~$3).  
-Checkpoints and metrics are logged automatically to MLflow.
+- `reports/eval_test.md`
+- `reports/error_analysis.csv`
+- `reports/predictions_test.jsonl`
+- `reports/latency_histogram.png`
 
-```bash
-# View experiment results
-mlflow ui --port 5000
-```
+## Features
 
----
+- LoRA fine-tuning pipeline for adapting Qwen2.5-VL to receipt extraction.
+- Async FastAPI workflow with upload, status polling, and final result retrieval.
+- Database-backed job lifecycle tracking for `pending`, `processing`, `done`, and `failed` states.
+- Evaluation pipeline that generates markdown reports, prediction artifacts, and latency charts.
+- Support for both direct model-backed API inference and vLLM-style serving experiments.
+- Config-driven setup for model, LoRA, and serving behavior.
 
-## Evaluation
+## API Workflow
 
-```bash
-# Run full evaluation on test split
-python src/eval/run_eval.py --split test --checkpoint checkpoints/lora/best
-
-# Latency benchmark (50 samples)
-python -m src.eval.benchmark --split test --n-samples 50
-```
-
-Outputs a markdown report to `reports/eval_test.md` and logs all metrics to MLflow.
-
-### Target Metrics
-
-| Metric | Target | Description |
-|--------|--------|-------------|
-| CER | < 0.10 | Character error rate on full JSON output |
-| WER | < 0.15 | Word error rate on full JSON output |
-| Field Accuracy | > 0.85 | Exact match on scalar fields |
-| Field F1 | > 0.80 | Precision/recall on field extraction |
-| Latency p50 | < 2s | Median inference time (GPU) |
-| Latency p95 | < 5s | 95th percentile inference time (GPU) |
-
----
-
-## API Reference
+The primary API exposes an asynchronous receipt processing flow.
 
 ### `POST /api/v1/upload`
 
-Upload a receipt image. Returns a `job_id` immediately (async processing).
+Uploads a receipt image and returns a job immediately.
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/upload \
   -F "file=@receipt.jpg"
 ```
 
+Example response:
+
 ```json
-{"job_id": "abc-123", "filename": "receipt.jpg", "status": "pending"}
+{
+  "job_id": "2c87cfd8-110a-4c91-8b0f-bb319ceac460",
+  "filename": "receipt.jpg",
+  "status": "pending"
+}
 ```
 
 ### `GET /api/v1/job/{job_id}`
 
-Poll job status: `pending → processing → done | failed`
+Polls job status until processing finishes.
+
+Possible states:
+
+- `pending`
+- `processing`
+- `done`
+- `failed`
 
 ### `GET /api/v1/results/{job_id}`
 
-Retrieve extraction result once job is `done`.
+Returns the extracted structured JSON after completion.
+
+Example response:
 
 ```json
 {
-  "job_id": "abc-123",
-  "store_name": "GS25 Gangnam",
-  "total_price": "15000",
-  "tax_price": "1500",
-  "items": [{"name": "Americano", "price": "3000"}],
-  "inference_ms": 1340.2
+  "job_id": "2c87cfd8-110a-4c91-8b0f-bb319ceac460",
+  "store_name": "CGV CINEMAS",
+  "total_price": "60,000",
+  "tax_price": "5,455",
+  "items": [
+    {
+      "name": "-TICKET CP",
+      "price": "60.000"
+    }
+  ],
+  "inference_ms": 1485.32
 }
 ```
 
 ### `GET /api/v1/health`
 
-Liveness probe — returns model backend and DB config.
+Returns a simple health payload with model backend and database configuration.
 
----
+## Quick Start
 
-## Docker
+### 1. Install dependencies
 
 ```bash
-# Build and start API + MLflow UI
-docker compose -f docker/docker-compose.yml up --build
-
-# API:     http://localhost:8000/docs
-# MLflow:  http://localhost:5000
+pip install -r requirements.txt
 ```
 
----
+### 2. Configure environment
 
-## CI / CD
+```bash
+cp .env.example .env
+```
 
-GitHub Actions runs on every PR and push to `main`:
+Key settings in `.env.example`:
 
-1. **Lint** — ruff checks `src/`, `tests/`, `scripts/`
-2. **Unit tests** — pytest (no GPU required)
-3. **Eval gate** *(main only)* — runs inference on 20 test samples, fails if `field_accuracy < 0.70`
-4. **Upload report** — eval markdown report saved as Actions artifact
+- `DATABASE_URL`
+- `MODEL_BACKEND`
+- `VLLM_BASE_URL`
+- `MLFLOW_TRACKING_URI`
+- `API_HOST`
+- `API_PORT`
 
----
+### 3. Download and preprocess data
+
+```bash
+bash scripts/download_data.sh
+python scripts/preprocess_data.py
+```
+
+### 4. Launch the API
+
+```bash
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Swagger UI:
+
+```text
+http://localhost:8000/docs
+```
+
+### 5. Run tests
+
+```bash
+pytest tests/ -v
+```
+
+## Training
+
+Fine-tuning is driven by the LoRA config in `configs/lora_config.yaml` and the training entry point in `src/model/train.py`.
+
+```bash
+python src/model/train.py --config configs/lora_config.yaml
+```
+
+Training workflow highlights:
+
+- loads Qwen2.5-VL model and processor
+- applies LoRA adapters to targeted modules
+- trains with Hugging Face `Trainer`
+- logs metrics and artifacts to MLflow
+- saves the best checkpoint for downstream evaluation and serving
+
+## Evaluation
+
+Run the evaluation pipeline with:
+
+```bash
+python src/eval/run_eval.py --split test --checkpoint checkpoints/lora/best
+```
+
+This generates:
+
+- markdown summary report
+- prediction JSONL artifact
+- error analysis CSV
+- latency histogram
+- MLflow-tracked metrics
 
 ## Repository Structure
 
-```
+```text
 financial-ocr/
-├── .github/workflows/eval.yml    # CI/CD pipeline
-├── .lightning/config.yaml        # Lightning AI studio config
-├── configs/
-│   ├── model_config.yaml         # Qwen model settings + prompt templates
-│   ├── lora_config.yaml          # LoRA hyperparameters + training args
-│   └── vllm_config.yaml          # vLLM server settings
-├── data/                         # gitignored — generated by scripts
-├── scripts/
-│   ├── download_data.sh          # Downloads CORD v2 from HuggingFace
-│   └── preprocess_data.py        # Augmentation + field extraction
-├── src/
-│   ├── data/
-│   │   ├── dataset.py            # CORDDataset + field extractor
-│   │   └── augmentation.py       # Albumentations pipeline
-│   ├── model/
-│   │   ├── qwen_model.py         # Unified wrapper (vLLM / transformers)
-│   │   └── train.py              # LoRA fine-tuning + MLflow logging
-│   ├── api/
-│   │   ├── main.py               # FastAPI app + lifespan
-│   │   ├── routes.py             # Upload / job / result / health endpoints
-│   │   ├── schemas.py            # Pydantic request/response models
-│   │   └── async_processor.py    # BackgroundTask — inference + DB write
-│   ├── db/
-│   │   ├── connection.py         # Async SQLAlchemy engine + session
-│   │   └── models.py             # Job / Result / EvalRun ORM tables
-│   └── eval/
-│       ├── metrics.py            # CER, WER, field F1, accuracy
-│       ├── benchmark.py          # Latency p50/p95/p99
-│       └── run_eval.py           # Full eval → MLflow → markdown report
-├── tests/
-│   ├── test_api.py
-│   ├── test_eval.py
-│   └── test_model.py
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── requirements.txt
-├── pyproject.toml
-└── .env.example
+|-- configs/                  # model, LoRA, and serving configs
+|-- docker/                   # container setup files kept in repo
+|-- receipt_api/              # additional API-related app entry point
+|-- reports/                  # generated evaluation outputs
+|-- scripts/                  # download, preprocess, merge, and demo scripts
+|-- src/
+|   |-- api/                  # FastAPI app, routes, schemas, async processor
+|   |-- data/                 # dataset loading and augmentation
+|   |-- db/                   # async DB connection and ORM models
+|   |-- eval/                 # metrics, benchmark, and evaluation pipeline
+|   |-- model/                # Qwen wrapper and training code
+|-- tests/                    # API, model, and eval tests
+|-- ui_app/                   # lightweight UI app entry point
+|-- README.md
+|-- pyproject.toml
+|-- requirements.txt
 ```
 
----
+## Notes
 
-## Resume Bullets
+- GPU-backed inference is the strongest path in the current project and is the basis for the benchmarked results above.
+- CPU fallback code exists in the repository for development flexibility, but it is not the headline serving path for this project.
+- Docker and GitHub workflow files are kept in the repo, but this README is intentionally centered on the parts that are already demonstrated with concrete outputs and metrics.
 
-```
-• Built end-to-end MLOps pipeline for financial receipt OCR using
-  Qwen2.5-VL-7B + LoRA fine-tuning on CORD v2 (800 receipts → 2,500
-  with Albumentations augmentation), achieving >85% field-level accuracy
+## Resume-Ready Summary
 
-• Designed async FastAPI inference service with vLLM backend and
-  BackgroundTasks queue; p95 latency <3s on Lightning AI L4 GPU
-  at <$0.004 per document
-
-• Implemented automated evaluation gate in GitHub Actions — runs CER,
-  WER, field F1 on every push to main, blocks merge if accuracy drops
-  below threshold; all metrics logged to MLflow with markdown report
-
-• Containerised full stack (API + MLflow UI) with Docker + docker-compose,
-  enabling one-command local deployment: `docker compose up --build`
-
-• Reduced GPU cost 90% during development by building CPU↔GPU switching
-  logic — 3B model + 4-bit quantisation on Lightning AI CPU studio,
-  7B + vLLM on GPU only for training and eval
-```
-
----
+This project demonstrates the ability to build a complete applied ML system around a modern multimodal model: prepare data, fine-tune a large vision-language model with LoRA, expose it through an asynchronous API, persist results, evaluate extraction quality, and benchmark real inference behavior on GPU infrastructure.
 
 ## License
 
