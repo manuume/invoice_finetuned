@@ -1,0 +1,49 @@
+cat > .gitignore <<'EOF'
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Data
+data/raw/
+data/processed/
+data/uploads/
+*.csv
+*.jsonl
+
+# Model checkpoints / large artifacts
+checkpoints/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+
+# MLflow / DB
+mlruns/
+mlflow.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs / reports generated locally
+logs/
+artifacts/
+reports/*.png
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+EOF

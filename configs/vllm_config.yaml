@@ -1,0 +1,12 @@
+# ── vLLM Server Config (GPU only) ────────────────────────────────────────────
+host: "0.0.0.0"
+port: 8001
+model: "checkpoints/lora/merged"   # path to merged LoRA checkpoint
+dtype: "bfloat16"
+max_model_len: 4096
+gpu_memory_utilization: 0.90
+max_num_seqs: 8                     # concurrent sequences
+trust_remote_code: true
+
+# ── OpenAI-compatible endpoint used by FastAPI ───────────────────────────────
+# FastAPI → POST http://localhost:8001/v1/chat/completions

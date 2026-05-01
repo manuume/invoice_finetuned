@@ -1,0 +1,51 @@
+# ── Core ML ──────────────────────────────────────────────────────────────────
+torch>=2.1.0
+torchvision>=0.16.0
+transformers>=4.45.0
+accelerate>=0.26.0
+peft>=0.10.0
+bitsandbytes>=0.43.0         # 4-bit quantization for CPU dev
+qwen-vl-utils>=0.0.8         # Qwen2.5-VL image preprocessing helpers
+
+# ── vLLM (GPU only — install manually on GPU studio) ─────────────────────────
+# vllm>=0.4.3
+
+# ── Dataset & Augmentation ───────────────────────────────────────────────────
+datasets>=2.16.0
+Pillow>=10.0.0
+albumentations>=1.3.1
+opencv-python-headless>=4.8.0
+
+# ── FastAPI & Async ──────────────────────────────────────────────────────────
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+aiofiles>=23.2.0
+
+# ── Database ─────────────────────────────────────────────────────────────────
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0            # async SQLite driver (dev)
+alembic>=1.13.0              # schema migrations
+asyncpg>=0.29.0              # async PostgreSQL driver (prod)
+
+# ── Experiment Tracking ──────────────────────────────────────────────────────
+mlflow>=2.10.0
+
+# ── Evaluation ───────────────────────────────────────────────────────────────
+jiwer>=3.0.0                 # CER / WER
+scikit-learn>=1.4.0          # F1, precision, recall
+numpy>=1.26.0
+pandas>=2.1.0
+matplotlib>=3.8.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+loguru>=0.7.0
+httpx>=0.26.0
+
+# ── Testing ──────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

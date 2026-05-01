@@ -1,0 +1,39 @@
+# ── LoRA Hyperparameters ─────────────────────────────────────────────────────
+lora_r: 8                # conservative rank for QLoRA training
+lora_alpha: 16           # scaling factor (typically 2x rank)
+lora_dropout: 0.05
+bias: "none"
+
+# Target only the most impactful attention layers (reduces memory vs training all)
+target_modules:
+  - q_proj
+  - v_proj
+
+# ── Training Hyperparameters ─────────────────────────────────────────────────
+output_dir: "checkpoints/lora"
+# Step-limited run; max_steps overrides epoch-based full training.
+num_train_epochs: 1
+max_steps: 100
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4    # effective batch = 4
+learning_rate: 5.0e-5
+lr_scheduler_type: "cosine"
+warmup_steps: 30                  # replaced deprecated warmup_ratio (0.05 * 600 steps)
+weight_decay: 0.01
+fp16: false
+bf16: true                        # use bf16 on RTX 6000 / A10G / L4
+gradient_checkpointing: true      # saves activation memory
+
+# ── Logging & Saving ─────────────────────────────────────────────────────────
+logging_steps: 5
+eval_steps: 50
+save_steps: 50
+save_total_limit: 2
+load_best_model_at_end: true
+metric_for_best_model: "eval_loss"
+report_to: "mlflow"
+
+# ── MLflow ───────────────────────────────────────────────────────────────────
+mlflow_experiment: "financial-ocr-lora"
+mlflow_tracking_uri: "sqlite:///mlflow.db"   # fixes filesystem backend warning

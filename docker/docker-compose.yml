@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data               # mount data for persistence
+      - ../checkpoints:/app/checkpoints # mount fine-tuned checkpoints
+      - ../mlruns:/app/mlruns           # MLflow local store
+      - ../reports:/app/reports
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./financial_ocr.db
+      MODEL_BACKEND: transformers
+      LOG_LEVEL: INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mlflow:
+    image: python:3.11-slim
+    command: >
+      sh -c "pip install mlflow -q &&
+             mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /mlruns"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../mlruns:/mlruns
+    restart: unless-stopped
+
+# ── Usage ─────────────────────────────────────────────────────────────────────
+# docker compose -f docker/docker-compose.yml up --build
+#
+# API docs:    http://localhost:8000/docs
+# MLflow UI:   http://localhost:5000

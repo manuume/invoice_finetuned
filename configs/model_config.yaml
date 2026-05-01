@@ -1,0 +1,35 @@
+# ── Model ────────────────────────────────────────────────────────────────────
+model_name: "Qwen/Qwen2.5-VL-7B-Instruct"
+model_name_cpu: "Qwen/Qwen2.5-VL-3B-Instruct"   # faster iteration on CPU dev
+max_new_tokens: 512
+temperature: 0.0          # greedy decoding for deterministic extraction
+image_max_pixels: 262144  # conservative cap for full QLoRA training
+lora_config: "lora_config.yaml"
+load_in_4bit: true
+bnb_4bit_quant_type: "nf4"
+bnb_4bit_use_double_quant: true
+model_max_length: 1024
+max_seq_length: 1024
+
+# ── Target fields extracted from CORD v2 ─────────────────────────────────────
+target_fields:
+  - store_name
+  - total_price
+  - tax_price
+  - items               # list of {name, price}
+
+# ── Prompt template ──────────────────────────────────────────────────────────
+system_prompt: >
+  You are a financial receipt extraction assistant.
+  Extract information accurately from receipt images.
+  Always respond with valid JSON only — no explanation, no markdown.
+
+extraction_prompt: >
+  Extract the following fields from this receipt image and return as JSON:
+  {
+    "store_name": "store or restaurant name",
+    "total_price": "final total as string",
+    "tax_price": "tax amount as string or null",
+    "items": [{"name": "item name", "price": "item price as string"}]
+  }
+  Return ONLY the JSON object. No extra text.
